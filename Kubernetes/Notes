@@ -1,0 +1,452 @@
+
+> Before installing kubernetes install docker on every VM (master & slave) of kubernetes cluster
+
+> In kubernetes Master machine will have different components and worker nodes will have diferrent componenets
+
+> Kubernetes commands will be executed on the Master VM. No kubernetes commands will be executed on Worker nodes.
+
+> Containers will be scheduled only on worker nodes in K8s.
+>  By default No container  will be scheduled on master node
+
+Components of Kubernetes:
+
+1. Kubectl
+
+> It is a Clinet tool which is installed with k8s.
+> we use this tool to write kubernetes commands and send it to apiServer.
+> Every command in k8s starts with kubectl
+
+2. apiServer
+
+> This interface is the principal component of kubernetes
+> apiserver will recieve user request and then further process it
+
+3. Schedular
+
+> its acts like a watchman and checks apiserver, if it has requests for container creation pending
+> decides on which worker node should the containers be scheduled on
+> it doesnot create containers, just decides wherre they have to created and informs apiServer where the container have to be scheduled
+
+4. Kubelet
+> kubelet is service that is running on worker nodes
+> It is kubernetes agent process, that is responsible for running containers
+> apisevrer will send request to kubelet for creating the containers
+> kubelet will recieve the request 
+> kubelet will pull image from dockerhub
+> run the image and container will be up & running
+> kubelet informs apiserver about contaienr running status 
+
+5. ETCD --> DB
+
+> it is a small key and value Data sotre, that is present on the lubernetes master machine
+> its stores complete information of the cluster, nodes and containers
+> we regularly take back up of ETCD
+> its take backup of jobs, container, pods, deployments etc.
+> It takes backup of the complete metadata of the objects that you create on kubernetes
+
+6. Controller Manager
+
+> Its main task is to watch for changes in the state of the objects, and make sure that the actual state converges towards the new desired state. 
+
+> Kube-controller-manager is a collection of different Kubernetes controllers
+
+> example: High availabiltiy
+
+Desired count = 15 replicas
+
+Contorller manager
+
+Current count =15
+
+
+==============================================================================
+
+Any object in kuberntes will be created using a manifest files
+
+They are written in YAML
+
+YAML is declaritve in nature
+
+It is not a programming language, scripting language
+
+file which stores data
+
+File in which we write YAMl code will have extension .yml or .yaml
+
+syntax: 
+
+key: value
+
+
+The key is genrally provided by the tool
+value is provided by the user
+value can be a single value or list of values
+
+
+YAML code storing single value
+
+---
+company: Edureka
+Trainer: Sonal
+Course: DevOps
+Time: 7.00AM
+days: wekday
+
+YAML code storing multiple values
+
+---
+company: Edureka
+trainers:
+  - Sonal
+  - Ravi
+  - Jack
+  - Maya
+courses:
+  - devops
+  - aws
+  - azure
+  - google
+time:
+  - 8.30PM
+  - 8PM
+
+Write YAML code to store Objects
+==============================================
+# to write comments in YAML
+
+company: edureka
+trainers:
+ - name: sonal
+   phone: 353546465
+   email: admin@gmail.com
+ - name: ravi
+   phone: 345345435
+   email: ravi@gmailc.om
+course:
+ - devops
+ - aws
+ - google
+
+
+key is always given by the tool..its pre-defined
+Values are mostly given by user.
+However there cna be chances that you want to define your own key and value. That is also allowed
+like and object ==> key: value
+
+==================================
+
+Pod with single container
+
+
+Pod with multiple containers
+
+
+Deploy multiple pods(replicas) in cluster
+
+===============================================
+
+Create a pod in cluster -- Pod defintion file --> YAML
+
+4 section in every code file of kubernetes
+
+apiVersion: schema or code library used by k8s to create the required object
+
+kind:  which object you want to create --pod
+
+metadata: provide name and labels on the pod
+
+spec: ***
+specify what you need on POD
+ container + image
+
+==============================
+
+Get the apiVersion for objects;
+
+https://blog.knoldus.com/what-is-apiversion-in-kubernetes-part-1/
+
+Kubernetes:
+
+# mkdir 11may
+# cd 11may
+# vim pod-defintion.yml
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pod1
+ labels:
+  author: sonal
+  env: QA
+  app: frontend
+spec:
+ containers:
+  - name: c1
+    image: nginx
+
+# kubectl create -f  pod-defintion.yml
+
+# kubectl get pods
+
+# kubectl describe pod pod1 | less
+
+# kubectl delete pod pod1
+
+========================================================
+
+Create a pod with multiple container
+
+# vim multi-contpod.yml
+
+
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: multicont
+ labels:
+  author: sonal
+  env: QA
+  app: frontend
+spec:
+ containers:
+  - name: c1
+    image: nginx
+  - name: c2
+    image: httpd
+  - name: c3
+    image: ubuntu
+
+# kubectl create -f <filename.yml>
+
+# kubectl get pods
+
+This yaml has got errors, so pod will not be created. It will have errors.
+Pod will show status as crashloopbackoff
+
+We will troubleshoot and execute steps to fix the problem if a pod fails
+
+# kubectl describe pod multicont | less
+
+# kubectl logs multicont -c c2
+
+====================================
+
+Fix the YAML file
+
+# vim newmulticont.yml
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: multicont2
+ labels:
+  author: sonal
+  env: QA
+  app: frontend
+spec:
+ containers:
+  - name: c1
+    image: nginx
+  - name: c2
+    image: tomcat
+  - name: c3
+    image: ubuntu
+    command: ["bash", "-c", "sleep 6000"]
+
+Deployment Object:
+===============================
+
+•ReplicaSet controller: This controller watches the desired number of replicas for a ReplicaSet and compares this number with the Pods matching its Pod selector. If the controller is informed via the watching mechanism of changes on the desired number of replicas, it acts accordingly, via the Kubernetes API. If the controller needs to create a new Pod because the actual number of replicas is lower than desired, it creates the new Pod manifests and posts them to the API server.
+Deployment controller: It takes care of keeping the actual Deployment state in sync with the desired state. When there is a change in a Deployment, this controller performs a rollout of a new version. As a consequence, a new ReplicaSet is created, scaling up the new Pods and scaling down the old ones. How this is performed depends on the strategy specified in the Deployment.
+
+# vim deployment.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: mydep
+spec:
+ replicas: 3   # here replicas means pods
+ selector:
+  matchLabels:
+   app: kubeserve
+ template: # the pod specification template
+  metadata:
+   labels:
+    app: kubeserve
+  spec:
+   containers:
+    - name: app
+      image: leaddevops/kubeserve:v1
+
+# kubectl delete pods --all
+# kubectl create -f <filename.yml>
+# kubectl get all
+It will give all the objects
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
