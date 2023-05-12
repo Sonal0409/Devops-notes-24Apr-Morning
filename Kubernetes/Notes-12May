@@ -1,0 +1,258 @@
+Deployment Object:
+===============================
+
+•ReplicaSet controller: This controller watches the desired number of replicas for a ReplicaSet and compares this number with the Pods matching its Pod selector. If the controller is informed via the watching mechanism of changes on the desired number of replicas, it acts accordingly, via the Kubernetes API. If the controller needs to create a new Pod because the actual number of replicas is lower than desired, it creates the new Pod manifests and posts them to the API server.
+Deployment controller: It takes care of keeping the actual Deployment state in sync with the desired state. When there is a change in a Deployment, this controller performs a rollout of a new version. As a consequence, a new ReplicaSet is created, scaling up the new Pods and scaling down the old ones. How this is performed depends on the strategy specified in the Deployment.
+
+# vim deployment.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: mydep
+spec:
+ replicas: 3   # here replicas means pods
+ selector:
+  matchLabels:
+   app: kubeserve
+ template: # the pod specification template
+  metadata:
+   labels:
+    app: kubeserve
+  spec:
+   containers:
+    - name: app
+      image: leaddevops/kubeserve:v1
+
+# kubectl delete pods --all
+# kubectl create -f <filename.yml>
+# kubectl get all
+It will give all the objects
+
+============================================
+
+Rolling Update Strategy:
+
+# vim deployment.yml
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kubeserve
+spec:
+  replicas: 3
+  minReadySeconds: 10 # wait for 45 sec before going to deploy next pod
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  
+      maxSurge: 1        # max number of pods to run for the deployment
+  selector:
+    matchLabels:
+      app: kubeserve
+  template:
+    metadata:
+      name: kubeserve
+      labels:
+        app: kubeserve
+    spec:
+      containers:
+       - name: app
+         image: leaddevops/kubeserve:v1
+
+
+# kubectl create -f deployment.yml
+# kubectl get all
+
+Scale up and down replicas:
+
+kubectl scale deployment mydep --replicas=4
+
+
+Rolling update commands:
+
+# kubectl get deployment -o wide
+# kubectl set image deployment mydep app=leaddevops/kubeserve:v3
+# kubectl get all
+
+
+Rollback
+
+# kubectl rollout undo deployment mydep
+
+=========================================
+
+Service Object:
+=========================================
+
+Node Port
+
+Vim service1.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: mysvc
+spec:
+ type: NodePort
+ selector:
+  app: kubeserve
+ ports:
+ - targetPort: 80
+   port: 80
+   nodePort: 30009
+
+# kubectl create -f service1.yml
+# kubectl get all
+# kubectl describe service mysvc
+
+Get external ip of worker node
+# kubectl get nodes -o wide
+
+=====================================
+
+Cluster IP
+====================================
+
+# vim service2.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: mysvc1
+spec:
+ type: ClusterIP
+ selector:
+  app: kubeserve
+ ports:
+  - targetPort: 80
+    port: 80
+
+# kubectl create -f service2.yml
+# kubectl get all
+# kubectl get service
+
+Create an ubuntu pod
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: frontend
+ labels:
+  author: sonal
+  env: QA
+  app: frontend
+spec:
+ containers:
+  - name: c1
+    image: ubuntu
+    command: ["bash", "-c", "sleep 6000"]
+
+
+# kubectl create -f <filename>
+Go inside ubuntu pod
+
+# kubectl exec -it frontend -- bash
+
+Inside pod execute below commands:
+
+# apt-get update && apt-get install curl
+
+# curl <clusterip>:80
+# curl servicename:80
+=============================================
+
+Namespace:
+
+Namespaces are a way to divide cluster resources between multiple users
+
+Namespaces are intended for use in environments with many users spread across multiple teams, or projects. For clusters with a few to tens of users, you should not need to create or think about namespaces at all. Start using namespaces when you need the features they provide.
+
+It is not necessary to use multiple namespaces to separate slightly different resources, such as different versions of the same software: use labels to distinguish resources within the same namespace.
+
+Demo:
+
+# kubectl create namespace sonal
+# kubectl get namespace
+# vim deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: mydep
+ namespace: sonal
+spec:
+ replicas: 3
+ strategy:
+  type: RollingUpdate
+  rollingUpdate:
+   maxUnavailable: 1
+   maxSurge: 1
+ selector:
+  matchLabels:
+   app: kubeserve
+ template: # the pod specification template
+  metadata:
+   labels:
+    app: kubeserve
+  spec:
+   containers:
+    - name: app
+      image: leaddevops/kubeserve:v1
+
+# kubectl create -f deployment.yml
+# kubectl get all
+# kubectl get all -n sonal
+
+vim service2.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: mysvc1
+ namespace: sonal
+spec:
+ type: ClusterIP
+ selector:
+  app: kubeserve
+ ports:
+  - targetPort: 80
+    port: 80
+
+kubectl create -f service2.yml
+kubectl get service -n sonal
+kubectl get all -n sonal
+
+
+kubectl create namespace devops
+
+vim pod-defintion.yml
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+ name: frontend
+ namespace: devops
+ labels:
+  author: sonal
+  env: QA
+  app: frontend
+spec:
+ containers:
+  - name: c1
+    image: ubuntu
+    command: ["bash", "-c", "sleep 6000"]
+
+
+kubectl create -f pod-defintion.yml
+
+kubectl get pods -n sonal
+
+ kubectl exec -it frontend -n devops -- bash
+
+# apt-get update && apt-get install curl -y
+
+Access service of another namespace
+
+# curl mysvc1.sonal.svc.cluster.local
