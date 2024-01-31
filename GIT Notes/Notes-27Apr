@@ -164,6 +164,13 @@ stash name stash@{0}
 see what saved in the stash 
 
 # git show stash@{0}
+git stash pop: This command is used to apply and remove the most recent stash.It's equivalent to running git stash apply followed by git stash drop.
+
+git stash drop: This command is used to discard a specific stash. You need to provide the stash reference as an argument
+git stash drop stash@{2}
+
+
+
 
 ================================================
 
